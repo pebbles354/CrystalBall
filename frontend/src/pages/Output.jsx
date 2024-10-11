@@ -317,7 +317,7 @@ function Output() {
                 Your stock is expected to <span className={summaryResult.market_prediction === 'BULLISH' ? 'text-green-500' : summaryResult.market_prediction === 'BEARISH' ? 'text-red-500' : 'text-gray-500'}>{summaryResult.market_prediction}</span> {summaryResult.market_prediction === 'BULLISH' ? '⬆️' : summaryResult.market_prediction === 'BEARISH' ? '⬇️' : ''}
               </>
             ) : (
-              "No results generated yet"
+              "Press survey agents button to generate results"
             )}
           </p>
           {summaryResult && (
