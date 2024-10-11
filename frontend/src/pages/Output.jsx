@@ -61,7 +61,7 @@ function Output() {
 
     async function downloadCSV() {
       try {
-        const response = await fetch('http://localhost:8000/download_csv');
+        const response = await fetch('https://crystalball-2sp6.onrender.com/download_csv');
 
         if (response.ok) {
           const csvContent = await response.text();
@@ -197,7 +197,7 @@ function Output() {
       setIsLoading(true);
       try {
         const endpoint = mode === 'lite' ? 'processAgentsLite' : 'processAgents';
-        const response = await axios.post(`http://localhost:8000/${endpoint}`, {
+        const response = await axios.post(`https://crystalball-2sp6.onrender.com/${endpoint}`, {
           posed_question: searchValue,
           instrument: selectedStock,
           date: selectedDate,
@@ -248,7 +248,7 @@ function Output() {
 
     const summarizeResponses = async () => {
       try {
-        const response = await axios.post('http://localhost:8000/getFinalReasoning', {
+        const response = await axios.post('https://crystalball-2sp6.onrender.com/getFinalReasoning', {
           posed_question: searchValue,
           instrument: selectedStock,
           date: selectedDate,
