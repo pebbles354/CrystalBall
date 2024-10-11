@@ -1,8 +1,9 @@
 # requirements.txt
-fastapi==0.68.0
+fastapi==0.99.1
 uvicorn==0.15.0
 httpx==0.23.0
 python-dotenv==0.19.0
 groq==0.11.0
 toolhouse==1.2.1 #comes with openai
 aiohttp==3.10.9
+fastapi-cors

@@ -5,6 +5,7 @@ from io import StringIO
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from groq import Groq
 from openai import AsyncOpenAI
 from pydantic import BaseModel
@@ -12,11 +13,31 @@ from pydantic import BaseModel
 from agent import get_final_reasoning, run_agent_processing
 from model import Agent, EventContext
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from toolhouse_helper import get_real_context
+
+
+
 
 # Load environment variables from .env file
 load_dotenv()
 app = FastAPI()
+
+# add cors middleware
+# Allow requests from the frontend URL
+origins = [
+    "http://localhost:5173",  # Frontend (Vite) running on localhost
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allows access from these origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers (Content-Type, Authorization, etc.)
+)
+
 
 # Load Groq API key from environment variable
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -93,11 +114,11 @@ async def health_check():
 
 @app.post("/processAgents")
 async def process_agents(event_context: EventContext):
-    input_csv_file_path = 'AgentTestData.csv'  # Hardcoded input CSV file path
+    input_csv_file_path = 'AgentTestDataSample.csv'  # Hardcoded input CSV file path
     try:
         processed_agents = await run_agent_processing(input_csv_file_path, event_context)
         
-        output_csv_file_path = f'ProcessedAgents.csv'
+        output_csv_file_path = f'ProcessedAgentsSample.csv'
         
         # Save processed agents to the new CSV file
         with open(output_csv_file_path, 'w', newline='') as csvfile:
@@ -111,6 +132,30 @@ async def process_agents(event_context: EventContext):
     except Exception as e:
         print(f"Error in process_agents: {str(e)}")  # Add this line for debugging
         raise HTTPException(status_code=500, detail=f"Error processing agents: {str(e)}")
+    
+# New endpoint to serve the CSV file
+@app.get("/download_csv")
+async def download_csv():
+    output_csv_file_path = 'ProcessedAgentsSample.csv'
+    
+    if os.path.exists(output_csv_file_path):
+        response = FileResponse(
+            output_csv_file_path, 
+            media_type='text/csv', 
+            filename='ProcessedAgents.csv'
+        )
+        # Manually add CORS headers
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:5173"  # Or "*" if you want to allow all origins
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+    else:
+        raise HTTPException(status_code=404, detail="CSV file not found")
+    
+@app.get("/test_cors")
+async def test_cors():
+    return {"message": "CORS is working"}
 
 @app.post("/getFinalReasoning")
 async def process_agents_and_get_final_reasoning(event_context: EventContext):

@@ -5,20 +5,37 @@ import re
 from typing import Dict, List
 import os
 from groq import AsyncGroq
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI  # Change this import
 
 from model import Agent, Direction, EventContext, LLMResponse
 from prompts import get_final_reasoning_agent_prompt, get_final_reasoning_system_prompt, get_process_agents_system_prompt, get_process_agents_user_prompt
 from toolhouse_helper import get_real_context
 
 def preprocess_json(s: str) -> str:
-    def remove_space_around_colon(match):
-        return match.group(1) + ':' + match.group(3)
+    # Remove any leading/trailing whitespace and newlines
+    s = s.strip()
     
-    # This regex looks for a colon with optional spaces around it,
-    # but not inside quotes
-    pattern = r'([^"\s:]+)\s*:\s*([^"\s\[{]+|"[^"]*"|\[[^\]]*\]|{[^}]*})'
-    return re.sub(pattern, remove_space_around_colon, s)
+    # Extract the JSON object from the response
+    json_match = re.search(r'\{.*\}', s, re.DOTALL)
+    if json_match:
+        s = json_match.group(0)
+    
+    # Remove any backslashes that aren't part of an escape sequence
+    s = re.sub(r'(?<!\\)\\(?!["\\])', '', s)
+    
+    # Replace single quotes with double quotes for JSON compatibility
+    s = s.replace("'", '"')
+    
+    # Ensure property names are in double quotes
+    s = re.sub(r'(\w+):', r'"\1":', s)
+    
+    # Handle multiline rationale and escape internal quotes
+    s = re.sub(r':\s*"(.+?)"(?=\s*[,}])', lambda m: ': "' + m.group(1).replace('\n', '\\n').replace('"', '\\"') + '"', s, flags=re.DOTALL)
+    
+    # Remove any trailing commas before closing braces or brackets
+    s = re.sub(r',\s*([}\]])', r'\1', s)
+    
+    return s
 
 def create_agents_from_csv(csv_file_path: str) -> List[Agent]:
     agents = []
@@ -35,6 +52,9 @@ def create_agents_from_csv(csv_file_path: str) -> List[Agent]:
                 weight=row['Weight']
             )
             agents.append(agent)
+
+    # for agent in agents:
+    #     print(agent)
     
     return agents
 
@@ -72,8 +92,9 @@ async def process_agents_with_groq(agents: List[Agent], event_context: str) -> L
 
             try:
                 preprocessed_content = preprocess_json(response_content)
-                jsonified_content = json.dumps(preprocessed_content)
-                llm_response = json.loads(jsonified_content)
+                # Add a step to remove any potential control characters
+                cleaned_content = ''.join(char for char in preprocessed_content if ord(char) >= 32)
+                llm_response = json.loads(cleaned_content)
                 print(f"Agent: {agent.name}, Model: {model}, Response: {llm_response}")
                 agent.llmResponse = LLMResponse(
                     direction=Direction(llm_response["direction"]),
@@ -82,6 +103,8 @@ async def process_agents_with_groq(agents: List[Agent], event_context: str) -> L
                 )
             except json.JSONDecodeError as e:
                 print(f"JSON parsing error for agent {agent.name} with model {model}: {str(e)}")
+                print(f"Preprocessed content: {preprocessed_content}")
+                print(f"Cleaned content: {cleaned_content}")
                 agent.llmResponse = LLMResponse(
                     direction=Direction.HOLD,
                     strength=0.0,
@@ -113,39 +136,46 @@ async def process_agents_with_groq(agents: List[Agent], event_context: str) -> L
         model = models[i % len(models)]
         non_real_agent_tasks.append(process_agent(agent, model))
 
-    # Process agents in batches
+    # Process agents in batches if len(all_tasks) is over 400
     all_tasks = real_agent_tasks + non_real_agent_tasks
-    batch_size = len(all_tasks) // 2  # Divide tasks into 2 batches
     processed_agents = []
 
-    for i in range(2):
-        start_idx = i * batch_size
-        end_idx = start_idx + batch_size if i < 2 else len(all_tasks)
-        
-        print(f"Processing batch {i+1} of 2...")
-        batch_tasks = all_tasks[start_idx:end_idx]
-        batch_results = await asyncio.gather(*batch_tasks)
-        processed_agents.extend(batch_results)
-        
-        if i < 1:  # Don't wait after the last batch
-            print(f"Waiting 60 seconds before next batch...")
-            await asyncio.sleep(60)  # Wait for 60 seconds
+    if len(all_tasks) > 400:
+        batch_size = len(all_tasks) // 2  # Divide tasks into 2 batches
+
+        for i in range(2):
+            start_idx = i * batch_size
+            end_idx = start_idx + batch_size if i < 1 else len(all_tasks)
+            
+            print(f"Processing batch {i+1} of 2...")
+            batch_tasks = all_tasks[start_idx:end_idx]
+            batch_results = await asyncio.gather(*batch_tasks)
+            processed_agents.extend(batch_results)
+            
+            if i < 1:  # Don't wait after the last batch
+                print(f"Waiting 60 seconds before next batch...")
+                await asyncio.sleep(60)  # Wait for 60 seconds
+    else:
+        processed_agents = await asyncio.gather(*all_tasks)
 
     return processed_agents
 
 async def process_agents(csv_file_path: str, event_context: EventContext) -> List[Agent]:
     agents = create_agents_from_csv(csv_file_path)
+    
     agents_with_real_context = await process_real_agents(agents, event_context)
     return await process_agents_with_groq(agents_with_real_context, event_context)
+
+    # return await process_agents_with_groq(agents, event_context)
 
 async def run_agent_processing(csv_file_path: str, event_context: EventContext) -> List[Dict]:
     processed_agents = await process_agents(csv_file_path, event_context)
     return [agent.dict() for agent in processed_agents]
 
 async def get_final_reasoning(processed_agents, event_context: EventContext) -> Dict:
-    client = AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY")
+    client = AsyncOpenAI(  # Use AsyncOpenAI instead of OpenAI
+        organization='org-t5rYtncamxA8niblkr9UECJD',
+        project='proj_Fjj0lXKlHvcuWya1eh4L2Rvo',
     )
     
     system_prompt = get_final_reasoning_system_prompt()
@@ -163,10 +193,11 @@ async def get_final_reasoning(processed_agents, event_context: EventContext) -> 
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            model="openai/o1-preview-2024-09-12"
+            model="gpt-4o"
         )
         
         response_content = chat_completion.choices[0].message.content
+        print(response_content)
         return response_content
     except Exception as e:
         print(f"Error in get_final_reasoning: {str(e)}")

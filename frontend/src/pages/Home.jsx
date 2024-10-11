@@ -13,13 +13,14 @@ function Home() {
     navigate('/output', { state: { searchValue, selectedStock, selectedDate } });
   }
   
+  console.log(selectedDate);
 
   const handleLuckyClick = () => {
     const scenarios = [
-      "taylor announces a new tour",
-      "trump wins the 2024 election",
-      "there's a tornado in Kansas",
-      "escalation of war in the Middle East"
+      "Taylor announces a new tour",
+      "Trump wins the 2024 election",
+      "There's a tornado in Kansas",
+      "Escalation of war in the Middle East"
     ];
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
     setSearchValue(randomScenario);
@@ -52,6 +53,7 @@ function Home() {
             className="p-1 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedStock}
             onChange={(e) => setSelectedStock(e.target.value)}
+            disabled
           >
             <option value="S&P 500">S&P 500</option>
             <option value="NASDAQ">NASDAQ</option>

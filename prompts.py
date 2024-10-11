@@ -41,7 +41,10 @@ Your response must be a JSON-like string containing the following keys:
 "hold_percentage": Float (0.0 to 100.0)
 "weighted_buy_probability": Float (0.0 to 1.0)
 "weighted_sell_probability": Float (0.0 to 1.0)
-"summary": String (a 1 sentence concise analysis of the overall sentiment, key factors, and any notable divergences)"""
+"summary": String (a 1 sentence concise analysis of the overall sentiment, key factors, and any notable divergences)
+"sell_summary": A 1 paragraph (3-4 sentence) summary of why the personas who made sell recommendations did so. Please be sure to outline the key factors and themes that emerged from the rationale, and any notable divergences in opinion among different types of investors (e.g., institutional vs. retail).
+"buy_summary": A 1 paragraph (3-4 sentence) summary of why the personas who made buy recommendations did so. Please be sure to outline the key factors and themes that emerged from the rationale, and any notable divergences in opinion among different types of investors (e.g., institutional vs. retail).
+"hold_summary": A 1 paragraph (3-4 sentence) summary of why the personas who made hold recommendations did so. Please be sure to outline the key factors and themes that emerged from the rationale, and any notable divergences in opinion among different types of investors (e.g., institutional vs. retail)."""
 
 
 def get_final_reasoning_agent_prompt(agent_dict: str, event_context: EventContext):
