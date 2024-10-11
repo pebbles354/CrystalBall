@@ -1,7 +1,8 @@
 // Home.js
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import CrystalBall from '../assets/CrystalBall.png'; // Assuming the image is in the assets folder
+import Header from '../components/Header';
 
 function formatDateToYYYYMMDD(date) {
   const year = date.getFullYear();
@@ -40,14 +41,7 @@ function Home() {
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen pt-20 relative">
-      <a
-        href="https://docs.google.com/presentation/d/14lYkmKgAgr1XXPZt4jf-yXKOR-udq9f3lYA7R4Fn7ec/edit#slide=id.g2f9b2d73cec_0_12"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-4 right-4 text-blue-500 hover:text-blue-600"
-      >
-        How it works
-      </a>
+      <Header />
       <div className="w-full max-w-lg">
         <div className="flex flex-col items-center">
           <img src={CrystalBall} alt="Crystal Ball Logo" className="w-60 h-60" />

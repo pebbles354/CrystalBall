@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
+import Header from '../components/Header';
 
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, signInAnonymously } from "firebase/auth";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -22,6 +24,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth();
+const db = getFirestore(app);
 
 
 function Output() {
@@ -174,9 +177,14 @@ function Output() {
               buy_percent: buyPercent,
               hold_percent: holdPercent
             });
+
+            return {validResponses, sellPercent, buyPercent, holdPercent};
           } else {
             console.log("No valid responses found");
           }
+
+
+          
         } else {
           console.error("Failed to download CSV");
         }
@@ -197,8 +205,33 @@ function Output() {
 
         console.log(response.data);
 
-        await downloadCSV();
-        await summarizeResponses();
+        const CSVResponse = await downloadCSV();
+        const summaryResponse = await summarizeResponses();
+
+        // Push data to Firebase
+        const user = auth.currentUser;
+        if (user) {
+          try {
+            const docRef = await addDoc(collection(db, "queries"), {
+              created_at: new Date(),
+              userID: user.uid,
+              searchValue,
+              selectedStock,
+              selectedDate,
+              personaResponses: CSVResponse.validResponses,
+              summaryResponse,
+              sellPercent: CSVResponse.sellPercent,
+              buyPercent: CSVResponse.buyPercent,
+              holdPercent: CSVResponse.holdPercent,
+              mode: mode
+            });
+            console.log("Document written with ID: ", docRef.id);
+          } catch (e) {
+            console.error("Error adding document: ", e);
+          }
+        } else {
+          console.error("No user signed in");
+        }
 
       } catch (error) {
         if (error.response) {
@@ -232,6 +265,8 @@ function Output() {
         // Update state with the parsed object
         setSummaryResult(parsedResult);
         setPersonasGenerated(true);
+        return parsedResult;
+
       } catch (error) {
         console.error("Error getting final reasoning:", error);
         // Handle the error appropriately
@@ -240,6 +275,9 @@ function Output() {
   
     return (
     <div className="flex flex-col items-center justify-start min-h-screen pt-20">
+      <Header />
+
+
       <div className="w-full max-w-4xl">
         <div className="flex flex-col items-start mb-6">
           <h1 className="text-2xl font-bold mb-3">{selectedStock} impact if {searchValue}</h1>
