@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Output from './pages/Output';
 import QueryList from './pages/QueryList';
 import HistoricOutput from './pages/HistoricOutput';
+import { Analytics } from "@vercel/analytics/react"
 
 
 function App() {
