@@ -11,7 +11,7 @@ const Header = () => {
       </div>
       <div className="absolute top-4 right-4 flex space-x-4">
         <Link to="/previous" className="text-blue-500 hover:text-blue-600">
-          Previous Searches
+          All Searches
         </Link>
         <a
           href="https://docs.google.com/presentation/d/14lYkmKgAgr1XXPZt4jf-yXKOR-udq9f3lYA7R4Fn7ec/edit#slide=id.g2f9b2d73cec_0_12"
