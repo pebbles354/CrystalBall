@@ -80,8 +80,8 @@ function HistoricOutput() {
                     <div className={`p-4 border border-gray-300 rounded-lg shadow-sm bg-gray-100`} style={{ width: `${data.holdPercent}%` }}></div>
                     <div className={`p-4 border border-gray-300 rounded-lg shadow-sm bg-green-100`} style={{ width: `${data.buyPercent}%` }}></div>
                 </div>
-                <p className="text-lg font-semibold text-gray-700 mt-4 mb-2">Weighted directions</p>
-                <div className="mt-6 flex">
+                <p className="text-lg font-semibold text-gray-700 mt-6 mb-2 text-left">Weighted directions</p>
+                <div className=" flex">
                     <div className="text-left mr-8">
                     <p className="text-lg font-semibold text-gray-500">Sell</p>
                     <p className="text-2xl">⬇️ {data.sellPercent}%</p>
@@ -103,7 +103,8 @@ function HistoricOutput() {
                 <div className="flex overflow-x-scroll space-x-4">
                     {data.personaResponses.map((source, index) => (
                         <div key={index} className="flex-shrink-0 flex-nowrap p-4 border border-gray-300 rounded-lg shadow-sm w-[400px]">
-                            <h3 className="text-lg font-semibold text-left mb-8">{source.name}</h3>
+                            <h3 className="text-lg font-semibold text-left ">{source.name}</h3>
+                            <p className="text-sm text-gray-500 mb-4 text-left">{source.subcategory} - {source.category}</p>
                             <p className="mb-2 text-left"><strong>Direction:</strong> <span className={source.direction === 'BUY' ? 'text-green-500' : source.direction === 'SELL' ? 'text-red-500' : 'text-gray-500'}>{source.direction}</span></p>
                             <p className="mb-2 text-left"><strong>Strength:</strong> {source.strength}</p>
                             <p className="mb-2 text-left"><strong>Rationale:</strong> {source.rationale}</p>
