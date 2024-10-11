@@ -28,7 +28,7 @@ app = FastAPI()
 # Allow requests from the frontend URL
 origins = [
     "http://localhost:5173",   # Frontend (Vite) running on localhost
-    "https://crystal-ball-five.vercel.app/"
+    "https://crystal-ball-five.vercel.app"
 ]
 
 app.add_middleware(
@@ -167,7 +167,7 @@ async def download_csv():
             filename='ProcessedAgents.csv'
         )
         # Manually add CORS headers
-        response.headers["Access-Control-Allow-Origin"] = "https://crystal-ball-five.vercel.app/"  # Or "*" if you want to allow all origins
+        response.headers["Access-Control-Allow-Origin"] = "https://crystal-ball-five.vercel.app"  # Or "*" if you want to allow all origins
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "GET"
         response.headers["Access-Control-Allow-Headers"] = "*"
