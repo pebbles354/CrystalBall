@@ -80,6 +80,7 @@ function HistoricOutput() {
                     <div className={`p-4 border border-gray-300 rounded-lg shadow-sm bg-gray-100`} style={{ width: `${data.holdPercent}%` }}></div>
                     <div className={`p-4 border border-gray-300 rounded-lg shadow-sm bg-green-100`} style={{ width: `${data.buyPercent}%` }}></div>
                 </div>
+                <p className="text-lg font-semibold text-gray-700 mt-4 mb-2">Weighted directions</p>
                 <div className="mt-6 flex">
                     <div className="text-left mr-8">
                     <p className="text-lg font-semibold text-gray-500">Sell</p>
