@@ -114,11 +114,32 @@ async def health_check():
 
 @app.post("/processAgents")
 async def process_agents(event_context: EventContext):
-    input_csv_file_path = 'AgentTestDataSample.csv'  # Hardcoded input CSV file path
+    input_csv_file_path = 'AgentTestData.csv'  # Hardcoded input CSV file path
     try:
         processed_agents = await run_agent_processing(input_csv_file_path, event_context)
         
-        output_csv_file_path = f'ProcessedAgentsSample.csv'
+        output_csv_file_path = f'ProcessedAgents.csv'
+        
+        # Save processed agents to the new CSV file
+        with open(output_csv_file_path, 'w', newline='') as csvfile:
+            fieldnames = ['name', 'category', 'subcategory', 'weight', 'description', 'isReal', 'realContext', 'llmResponse']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for agent in processed_agents:
+                writer.writerow(agent)
+        
+        return {"agents": processed_agents, "output_file": output_csv_file_path}
+    except Exception as e:
+        print(f"Error in process_agents: {str(e)}")  # Add this line for debugging
+        raise HTTPException(status_code=500, detail=f"Error processing agents: {str(e)}")
+    
+@app.post("/processAgentsLite")
+async def process_agents_lite(event_context: EventContext):
+    input_csv_file_path = 'AgentTestDataLite.csv'  # Hardcoded input CSV file path
+    try:
+        processed_agents = await run_agent_processing(input_csv_file_path, event_context)
+        
+        output_csv_file_path = f'ProcessedAgents.csv'
         
         # Save processed agents to the new CSV file
         with open(output_csv_file_path, 'w', newline='') as csvfile:
@@ -136,7 +157,7 @@ async def process_agents(event_context: EventContext):
 # New endpoint to serve the CSV file
 @app.get("/download_csv")
 async def download_csv():
-    output_csv_file_path = 'ProcessedAgentsSample.csv'
+    output_csv_file_path = 'ProcessedAgents.csv'
     
     if os.path.exists(output_csv_file_path):
         response = FileResponse(

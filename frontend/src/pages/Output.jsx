@@ -1,6 +1,28 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth, signInAnonymously } from "firebase/auth";
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyD8NZhB9CcpnGqITgLuHd4ZUHP0tAYcozw",
+  authDomain: "crystalball-d10e4.firebaseapp.com",
+  projectId: "crystalball-d10e4",
+  storageBucket: "crystalball-d10e4.appspot.com",
+  messagingSenderId: "688728391370",
+  appId: "1:688728391370:web:58b1f2f19c91b2bb4abe33",
+  measurementId: "G-92K77WL5BY"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth();
+
 
 function Output() {
 
@@ -13,16 +35,26 @@ function Output() {
     const [summaryResult, setSummaryResult] = useState(null);
     
     const [aggregatedResponses, setAggregatedResponses] = useState({})
+    const [isLoading, setIsLoading] = useState(false);
 
-      // const [data, setData] = useState({
-      //   prompt: searchValue,
-      //   date: selectedDate,
-      //   stock: selectedStock,
-      //   result: { trend: "", decrease: 0, neutral: 0, increase: 0 },
-      //   themes: [],
-      //   sources: []
-      // });
+    useEffect(() => {
+        const signInUser = async () => {
+            try {
+                const user = auth.currentUser;
+                console.log("User: ", user);
+                if (!user) {
+                    await signInAnonymously(auth);
+                    console.log("User signed in anonymously");
+                } else {
+                    console.log("User already signed in");
+                }
+            } catch (error) {
+                console.error("Error signing in anonymously:", error);
+            }
+        };
 
+        signInUser();
+    }, []);
 
     async function downloadCSV() {
       try {
@@ -73,13 +105,17 @@ function Output() {
                 obj.direction = directionMatch ? directionMatch[2] : 'N/A';
                 obj.strength = strengthMatch ? parseFloat(strengthMatch[1]) : 0;
                 obj.rationale = rationaleMatch ? rationaleMatch[1] : 'Error parsing response';
+                
+                // Parse weight
+                obj.weight = parseFloat(obj.weight.replace('%', '')) / 100;
               } catch (e) {
-                console.error(`Error parsing llmResponse for row ${rowIndex + 2}:`, e);
-                console.log("Problematic llmResponse:", obj.llmResponse);
+                console.error(`Error parsing row ${rowIndex + 2}:`, e);
+                console.log("Problematic row:", obj);
                 
                 obj.direction = 'N/A';
                 obj.strength = 0;
                 obj.rationale = 'Error parsing response';
+                obj.weight = 0;
               }
             }
             return obj;
@@ -87,29 +123,47 @@ function Output() {
 
           console.log("Persona responses: ", data);
 
-
-          // Calculate percentages for buy, sell, and hold
+          // Parse for only valid responses
           const validResponses = data.filter(response => 
-            response && response.direction && ['SELL', 'BUY', 'HOLD'].includes(response.direction.toUpperCase())
+            response && 
+            response.direction && 
+            ['SELL', 'BUY', 'HOLD'].includes(response.direction.toUpperCase()) &&
+            !response.llmResponse.includes("Error processing response")
           );
 
           console.log("Valid responses: ", validResponses);
-
           setPersonaResponses(validResponses);
 
-          const totalResponses = validResponses.length;
-          
-          if (totalResponses > 0) {
-            const sellCount = validResponses.filter(r => r.direction.toUpperCase() === 'SELL').length;
-            const buyCount = validResponses.filter(r => r.direction.toUpperCase() === 'BUY').length;
-            const holdCount = validResponses.filter(r => r.direction.toUpperCase() === 'HOLD').length;
 
-            const sellPercent = Math.round((sellCount / totalResponses) * 100);
-            const buyPercent = Math.round((buyCount / totalResponses) * 100);
-            const holdPercent = Math.round((holdCount / totalResponses) * 100);
+          // Calculate percentages for buy, sell, and hold
 
+          // Initialize accumulators for each direction
+          let weightedSell = 0;
+          let weightedBuy = 0;
+          let weightedHold = 0;
+          let totalWeight = 0;
 
-            console.log("Aggregated responses: ", {
+          validResponses.forEach(response => {
+            const direction = response.direction.toUpperCase();
+            const weight = response.weight;
+
+            totalWeight += weight;
+
+            if (direction === 'SELL') {
+              weightedSell += weight;
+            } else if (direction === 'BUY') {
+              weightedBuy += weight;
+            } else if (direction === 'HOLD') {
+              weightedHold += weight;
+            }
+          });
+
+          if (totalWeight > 0) {
+            const sellPercent = Math.round((weightedSell / totalWeight) * 100);
+            const buyPercent = Math.round((weightedBuy / totalWeight) * 100);
+            const holdPercent = Math.round((weightedHold / totalWeight) * 100);
+
+            console.log("Aggregated weighted responses: ", {
               sell_percent: sellPercent,
               buy_percent: buyPercent,
               hold_percent: holdPercent
@@ -131,37 +185,33 @@ function Output() {
       }
     }
     
-
-    const surveyAgents = async () => {
+    const surveyAgents = async (mode) => {
+      setIsLoading(true);
       try {
-        const response = await axios.post('http://localhost:8000/processAgents', {
-          posed_question: searchValue,          // Ensure this matches the 'prompt' field in EventContext
-          instrument: selectedStock,  // Ensure this matches the 'selectedStock' field
-          date: selectedDate,    // Ensure this matches the 'selectedDate' field
-          // Add other fields if EventContext has more
+        const endpoint = mode === 'lite' ? 'processAgentsLite' : 'processAgents';
+        const response = await axios.post(`http://localhost:8000/${endpoint}`, {
+          posed_question: searchValue,
+          instrument: selectedStock,
+          date: selectedDate,
         });
 
         console.log(response.data);
 
-        await downloadCSV(); // Call downloadCSV after surveying agents
-        await summarizeResponses(); // Automatically call summarizeResponses after downloading CSV
+        await downloadCSV();
+        await summarizeResponses();
 
       } catch (error) {
         if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
             console.error("Error surveying agents:", error.response.data);
         } else if (error.request) {
-            // The request was made but no response was received
             console.error("No response received:", error.request);
         } else {
-            // Something happened in setting up the request that triggered an Error
             console.error("Error setting up request:", error.message);
         }
+      } finally {
+        setIsLoading(false);
       }
     }
-
-
 
     const summarizeResponses = async () => {
       try {
@@ -181,13 +231,12 @@ function Output() {
         
         // Update state with the parsed object
         setSummaryResult(parsedResult);
-        setPersonasGenerated(true); // Assuming you want to show results after summarizing
+        setPersonasGenerated(true);
       } catch (error) {
         console.error("Error getting final reasoning:", error);
         // Handle the error appropriately
       }
     }
-  
   
     return (
     <div className="flex flex-col items-center justify-start min-h-screen pt-20">
@@ -199,17 +248,31 @@ function Output() {
           </div>
         </div>
 
-        <div className="flex justify-center mt-4  mb-4 space-x-4">
+        <div className="flex justify-center mt-4 mb-4 space-x-4">
           <button 
-            className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
-            onClick={surveyAgents}
+            className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"
+            onClick={() => surveyAgents('lite')}
+            disabled={isLoading}
           >
-            Survey Agents
+            Survey ~100 agents
+          </button>
+          <button 
+            className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 disabled:bg-green-300"
+            onClick={() => surveyAgents('regular')}
+            disabled={isLoading}
+          >
+            Survey ~1000 agents
           </button>
         </div>
+        <p className="text-sm text-gray-500 mt-2 mb-6">Note: Surveying 1000 agents will likely hit rate limit issues</p>
+
+        {isLoading && (
+          <div className="flex justify-center items-center mb-8">
+            <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
 
         <div className="mb-8 border border-gray-300 rounded-lg shadow-sm bg-white p-6">
-          {/* <h2 className="text-xl font-semibold mb-2 text-left">Result</h2> */}
           <p className="text-4xl mt-4 mb-6 text-left">
             {summaryResult ? (
               <>

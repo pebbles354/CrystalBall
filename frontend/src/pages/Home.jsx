@@ -3,11 +3,23 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CrystalBall from '../assets/CrystalBall.png'; // Assuming the image is in the assets folder
 
+function formatDateToYYYYMMDD(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() is zero-indexed, so we add 1
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+const today = new Date();
+const formattedDate = formatDateToYYYYMMDD(today);
+
 function Home() {
   const [searchValue, setSearchValue] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formattedDate);
   const [selectedStock, setSelectedStock] = useState('S&P 500');
   const navigate = useNavigate();
+
 
   function agentAnalysis(searchValue, selectedStock, selectedDate) {
     navigate('/output', { state: { searchValue, selectedStock, selectedDate } });
@@ -27,7 +39,15 @@ function Home() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen pt-20">
+    <div className="flex flex-col items-center justify-start min-h-screen pt-20 relative">
+      <a
+        href="https://docs.google.com/presentation/d/14lYkmKgAgr1XXPZt4jf-yXKOR-udq9f3lYA7R4Fn7ec/edit#slide=id.g2f9b2d73cec_0_12"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-4 right-4 text-blue-500 hover:text-blue-600"
+      >
+        How it works
+      </a>
       <div className="w-full max-w-lg">
         <div className="flex flex-col items-center">
           <img src={CrystalBall} alt="Crystal Ball Logo" className="w-60 h-60" />
